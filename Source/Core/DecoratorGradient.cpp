@@ -61,7 +61,7 @@ bool DecoratorGradient::Initialise(const Direction dir_, const Colourb start_, c
 
 DecoratorDataHandle DecoratorGradient::GenerateElementData(Element* element) const
 {
-	Geometry* geometry = new Geometry();
+	Geometry* geometry = new Geometry(element);
 	const Box& box = element->GetBox();
 
 	const ComputedValues& computed = element->GetComputedValues();

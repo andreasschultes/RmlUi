@@ -33,6 +33,7 @@
 
 namespace Rml {
 
+class RenderInterface;
 class TextureResource;
 
 /**
@@ -49,8 +50,9 @@ public:
 	/// entry will be added and returned.
 	static SharedPtr<TextureResource> Fetch(const String& source, const String& source_directory);
 
-	/// Release all textures in the database.
-	static void ReleaseTextures();
+	/// Release all textures bound through a render interface.
+	/// Pass nullptr to release all textures in the database.
+	static void ReleaseTextures(RenderInterface* render_interface = nullptr);
 
 	/// Release a given texture from the database.
 	static bool ReleaseTexture(const String& source);
@@ -64,8 +66,8 @@ public:
 	/// Return a list of all texture sources currently in the database.
 	static StringList GetSourceList();
 
-	/// Returns true if there are no textures in the database yet to be released through the render interface.
-	static bool AllTexturesReleased();
+	/// For debugging. Returns true if any textures hold a reference to the given render interface.
+	static bool HoldsReferenceToRenderInterface(RenderInterface* render_interface);
 
 private:
 	TextureDatabase();

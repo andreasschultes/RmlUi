@@ -99,11 +99,6 @@ bool Initialise()
 		Log::Message(Log::LT_ERROR, "No system interface set!");
 		return false;
 	}
-	if (!render_interface)
-	{
-		Log::Message(Log::LT_ERROR, "No render interface set!");
-		return false;
-	}
 
 	if (!file_interface)
 	{
@@ -126,7 +121,7 @@ bool Initialise()
 		default_font_interface = MakeUnique<FontEngineInterfaceDefault>();
 		font_interface = default_font_interface.get();
 #else
-		Log::Message(Log::LT_ERROR, "No font engine interface set!");
+		Log::Message(Log::LT_ERROR, "No font interface set!");
 		return false;
 #endif
 	}
@@ -207,12 +202,6 @@ SystemInterface* GetSystemInterface()
 
 void SetRenderInterface(RenderInterface* _render_interface)
 {
-	if (initialised)
-	{
-		Log::Message(Log::LT_ERROR, "The render interface is not allowed to be set or changed after RmlUi has been initialised.");
-		return;
-	}
-
 	render_interface = _render_interface;
 }
 
@@ -241,10 +230,17 @@ FontEngineInterface* GetFontEngineInterface()
 	return font_interface;
 }
 
-Context* CreateContext(const String& name, const Vector2i dimensions)
+Context* CreateContext(const String& name, const Vector2i dimensions, RenderInterface* custom_render_interface)
 {
 	if (!initialised)
 		return nullptr;
+
+	if (!custom_render_interface && !render_interface)
+	{
+		Log::Message(Log::LT_WARNING, "Failed to create context '%s', no render interface specified and no default render interface exists.",
+			name.c_str());
+		return nullptr;
+	}
 
 	if (GetContext(name))
 	{
@@ -258,6 +254,12 @@ Context* CreateContext(const String& name, const Vector2i dimensions)
 		Log::Message(Log::LT_WARNING, "Failed to instance context '%s', instancer returned nullptr.", name.c_str());
 		return nullptr;
 	}
+
+	// Set the render interface on the context, and add a reference onto it.
+	if (custom_render_interface)
+		new_context->render_interface = custom_render_interface;
+	else
+		new_context->render_interface = render_interface;
 
 	new_context->SetDimensions(dimensions);
 
@@ -350,9 +352,9 @@ StringList GetTextureSourceList()
 	return TextureDatabase::GetSourceList();
 }
 
-void ReleaseTextures()
+void ReleaseTextures(RenderInterface* in_render_interface)
 {
-	TextureDatabase::ReleaseTextures();
+	TextureDatabase::ReleaseTextures(in_render_interface);
 }
 
 bool ReleaseTexture(const String& source)

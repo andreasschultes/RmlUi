@@ -27,7 +27,6 @@
  */
 
 #include "DecoratorDefender.h"
-#include <RmlUi/Core/Core.h>
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/GeometryUtilities.h>
 #include <RmlUi/Core/Math.h>
@@ -60,9 +59,9 @@ void DecoratorDefender::RenderElement(Rml::Element* element, Rml::DecoratorDataH
 	Rml::Vector2f size = element->GetBox().GetSize(Rml::BoxArea::Padding);
 	Rml::Math::SnapToPixelGrid(position, size);
 
-	if (Rml::RenderInterface* render_interface = ::Rml::GetRenderInterface())
+	if (Rml::RenderInterface* render_interface = element->GetRenderInterface())
 	{
-		Rml::TextureHandle texture = GetTexture(image_index)->GetHandle();
+		Rml::TextureHandle texture = GetTexture(image_index)->GetHandle(render_interface);
 		Rml::Colourb color = element->GetProperty<Rml::Colourb>("color");
 
 		Rml::Vertex vertices[4];

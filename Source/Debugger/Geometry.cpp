@@ -28,7 +28,6 @@
 
 #include "Geometry.h"
 #include "../../Include/RmlUi/Core/Context.h"
-#include "../../Include/RmlUi/Core/Core.h"
 #include "../../Include/RmlUi/Core/GeometryUtilities.h"
 #include "../../Include/RmlUi/Core/RenderInterface.h"
 
@@ -46,9 +45,10 @@ void Geometry::SetContext(Context* _context)
 
 void Geometry::RenderOutline(const Vector2f origin, const Vector2f dimensions, const Colourb colour, float width)
 {
-	RenderInterface* render_interface = ::Rml::GetRenderInterface();
-	if (!context || !render_interface)
+	if (context == nullptr)
 		return;
+
+	RenderInterface* render_interface = context->GetRenderInterface();
 
 	Vertex vertices[4 * 4];
 	int indices[6 * 4];
@@ -63,9 +63,10 @@ void Geometry::RenderOutline(const Vector2f origin, const Vector2f dimensions, c
 
 void Geometry::RenderBox(const Vector2f origin, const Vector2f dimensions, const Colourb colour)
 {
-	RenderInterface* render_interface = ::Rml::GetRenderInterface();
-	if (!context || !render_interface)
+	if (context == nullptr)
 		return;
+
+	RenderInterface* render_interface = context->GetRenderInterface();
 
 	Vertex vertices[4];
 	int indices[6];

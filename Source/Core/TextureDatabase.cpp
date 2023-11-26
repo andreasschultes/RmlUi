@@ -122,15 +122,15 @@ StringList TextureDatabase::GetSourceList()
 	return result;
 }
 
-void TextureDatabase::ReleaseTextures()
+void TextureDatabase::ReleaseTextures(RenderInterface* render_interface)
 {
 	if (texture_database)
 	{
 		for (const auto& texture : texture_database->textures)
-			texture.second->Release();
+			texture.second->Release(render_interface);
 
 		for (const auto& texture : texture_database->callback_textures)
-			texture->Release();
+			texture->Release(render_interface);
 	}
 }
 
@@ -146,20 +146,20 @@ bool TextureDatabase::ReleaseTexture(const String& source)
 	return false;
 }
 
-bool TextureDatabase::AllTexturesReleased()
+bool TextureDatabase::HoldsReferenceToRenderInterface(RenderInterface* render_interface)
 {
 	if (texture_database)
 	{
 		for (const auto& texture : texture_database->textures)
-			if (!texture.second->IsLoaded())
-				return false;
+			if (texture.second->HoldsRenderInterface(render_interface))
+				return true;
 
 		for (const auto& texture : texture_database->callback_textures)
-			if (!texture->IsLoaded())
-				return false;
+			if (texture->HoldsRenderInterface(render_interface))
+				return true;
 	}
 
-	return true;
+	return false;
 }
 
 } // namespace Rml

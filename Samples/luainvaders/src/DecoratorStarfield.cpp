@@ -106,6 +106,10 @@ void DecoratorStarfield::RenderElement(Rml::Element* element, Rml::DecoratorData
 	const float dp_ratio = Rml::ElementUtilities::GetDensityIndependentPixelRatio(element);
 	const float point_size = Rml::Math::RoundUp(2.f * dp_ratio);
 
+	Rml::RenderInterface* render_interface = element->GetRenderInterface();
+	if (!render_interface)
+		return;
+
 	int num_stars = 0;
 
 	for (size_t i = 0; i < star_field->star_layers.size(); i++)

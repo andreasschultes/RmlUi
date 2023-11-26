@@ -37,6 +37,7 @@ namespace Rml {
 
 class Context;
 class Element;
+class RenderInterface;
 struct Texture;
 using GeometryDatabaseHandle = uint32_t;
 
@@ -48,7 +49,8 @@ using GeometryDatabaseHandle = uint32_t;
 
 class RMLUICORE_API Geometry {
 public:
-	Geometry();
+	Geometry(Element* host_element = nullptr);
+	Geometry(Context* host_context);
 
 	Geometry(const Geometry&) = delete;
 	Geometry& operator=(const Geometry&) = delete;
@@ -57,6 +59,10 @@ public:
 	Geometry& operator=(Geometry&& other) noexcept;
 
 	~Geometry();
+
+	/// Set the host element for this geometry; this should be passed in the constructor if possible.
+	/// @param[in] host_element The new host element for the geometry.
+	void SetHostElement(Element* host_element);
 
 	/// Attempts to compile the geometry if appropriate, then renders the geometry, compiled if it can.
 	/// @param[in] translation The translation of the geometry.
@@ -85,6 +91,12 @@ public:
 private:
 	// Move members from another geometry.
 	void MoveFrom(Geometry& other) noexcept;
+
+	// Returns the host context's render interface.
+	RenderInterface* GetRenderInterface();
+
+	Context* host_context = nullptr;
+	Element* host_element = nullptr;
 
 	Vector<Vertex> vertices;
 	Vector<int> indices;

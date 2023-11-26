@@ -37,7 +37,12 @@
 
 namespace Rml {
 
-Geometry::Geometry()
+Geometry::Geometry(Element* host_element) : host_element(host_element)
+{
+	database_handle = GeometryDatabase::Insert(this);
+}
+
+Geometry::Geometry(Context* host_context) : host_context(host_context)
 {
 	database_handle = GeometryDatabase::Insert(this);
 }
@@ -57,6 +62,9 @@ Geometry& Geometry::operator=(Geometry&& other) noexcept
 
 void Geometry::MoveFrom(Geometry& other) noexcept
 {
+	host_context = std::exchange(other.host_context, nullptr);
+	host_element = std::exchange(other.host_element, nullptr);
+
 	vertices = std::move(other.vertices);
 	indices = std::move(other.indices);
 
@@ -73,10 +81,25 @@ Geometry::~Geometry()
 	Release();
 }
 
+void Geometry::SetHostElement(Element* _host_element)
+{
+	if (host_element == _host_element)
+		return;
+
+	if (host_element != nullptr)
+	{
+		Release();
+		host_context = nullptr;
+	}
+
+	host_element = _host_element;
+}
+
 void Geometry::Render(Vector2f translation)
 {
-	RenderInterface* const render_interface = ::Rml::GetRenderInterface();
-	RMLUI_ASSERT(render_interface);
+	RenderInterface* const render_interface = GetRenderInterface();
+	if (!render_interface)
+		return;
 
 	translation = translation.Round();
 
@@ -99,7 +122,7 @@ void Geometry::Render(Vector2f translation)
 		{
 			compile_attempted = true;
 			compiled_geometry = render_interface->CompileGeometry(&vertices[0], (int)vertices.size(), &indices[0], (int)indices.size(),
-				texture ? texture->GetHandle() : 0);
+				texture ? texture->GetHandle(render_interface) : 0);
 
 			// If we managed to compile the geometry, we can clear the local copy of vertices and indices and
 			// immediately render the compiled version.
@@ -112,8 +135,8 @@ void Geometry::Render(Vector2f translation)
 
 		// Either we've attempted to compile before (and failed), or the compile we just attempted failed; either way,
 		// render the uncompiled version.
-		render_interface->RenderGeometry(&vertices[0], (int)vertices.size(), &indices[0], (int)indices.size(), texture ? texture->GetHandle() : 0,
-			translation);
+		render_interface->RenderGeometry(&vertices[0], (int)vertices.size(), &indices[0], (int)indices.size(),
+			texture ? texture->GetHandle(GetRenderInterface()) : 0, translation);
 	}
 }
 
@@ -142,7 +165,7 @@ void Geometry::Release(bool clear_buffers)
 {
 	if (compiled_geometry)
 	{
-		::Rml::GetRenderInterface()->ReleaseCompiledGeometry(compiled_geometry);
+		GetRenderInterface()->ReleaseCompiledGeometry(compiled_geometry);
 		compiled_geometry = 0;
 	}
 
@@ -158,6 +181,20 @@ void Geometry::Release(bool clear_buffers)
 Geometry::operator bool() const
 {
 	return !indices.empty();
+}
+
+RenderInterface* Geometry::GetRenderInterface()
+{
+	if (!host_context)
+	{
+		if (host_element)
+			host_context = host_element->GetContext();
+	}
+
+	if (host_context)
+		return host_context->GetRenderInterface();
+	else
+		return ::Rml::GetRenderInterface();
 }
 
 } // namespace Rml

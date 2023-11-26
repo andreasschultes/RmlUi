@@ -240,10 +240,21 @@ bool ElementUtilities::GetClippingRegion(Vector2i& clip_origin, Vector2i& clip_d
 
 bool ElementUtilities::SetClippingRegion(Element* element, Context* context)
 {
-	if (element && !context)
-		context = element->GetContext();
+	RenderInterface* render_interface = nullptr;
+	if (element)
+	{
+		render_interface = element->GetRenderInterface();
+		if (!context)
+			context = element->GetContext();
+	}
+	else if (context)
+	{
+		render_interface = context->GetRenderInterface();
+		if (!render_interface)
+			render_interface = GetRenderInterface();
+	}
 
-	if (!context)
+	if (!render_interface || !context)
 		return false;
 
 	Vector2i clip_origin = {-1, -1};
@@ -256,16 +267,15 @@ bool ElementUtilities::SetClippingRegion(Element* element, Context* context)
 	if (current_clip != clip || (clip && (clip_origin != current_origin || clip_dimensions != current_dimensions)))
 	{
 		context->SetActiveClipRegion(clip_origin, clip_dimensions);
-		ApplyActiveClipRegion(context);
+		ApplyActiveClipRegion(context, render_interface);
 	}
 
 	return true;
 }
 
-void ElementUtilities::ApplyActiveClipRegion(Context* context)
+void ElementUtilities::ApplyActiveClipRegion(Context* context, RenderInterface* render_interface)
 {
-	RenderInterface* render_interface = ::Rml::GetRenderInterface();
-	if (!render_interface)
+	if (render_interface == nullptr)
 		return;
 
 	Vector2i origin;
@@ -315,30 +325,43 @@ bool ElementUtilities::PositionElement(Element* element, Vector2f offset, Positi
 
 bool ElementUtilities::ApplyTransform(Element& element)
 {
-	RenderInterface* render_interface = ::Rml::GetRenderInterface();
+	RenderInterface* render_interface = element.GetRenderInterface();
 	if (!render_interface)
 		return false;
 
-	static const Matrix4f* old_transform_ptr = {}; // This may be expired, dereferencing not allowed!
-	static Matrix4f old_transform_value = Matrix4f::Identity();
+	struct PreviousMatrix {
+		const Matrix4f* pointer; // This may be expired, dereferencing not allowed!
+		Matrix4f value;
+	};
+	static SmallUnorderedMap<RenderInterface*, PreviousMatrix> previous_matrix;
 
-	const Matrix4f* new_transform_ptr = nullptr;
+	auto it = previous_matrix.find(render_interface);
+	if (it == previous_matrix.end())
+		it = previous_matrix.emplace(render_interface, PreviousMatrix{nullptr, Matrix4f::Identity()}).first;
+
+	RMLUI_ASSERT(it != previous_matrix.end());
+
+	const Matrix4f*& old_transform = it->second.pointer;
+	const Matrix4f* new_transform = nullptr;
+
 	if (const TransformState* state = element.GetTransformState())
-		new_transform_ptr = state->GetTransform();
+		new_transform = state->GetTransform();
 
 	// Only changed transforms are submitted.
-	if (old_transform_ptr != new_transform_ptr)
+	if (old_transform != new_transform)
 	{
-		// Do a deep comparison as well to avoid submitting a new transform which is equal.
-		if (!old_transform_ptr || !new_transform_ptr || (old_transform_value != *new_transform_ptr))
-		{
-			render_interface->SetTransform(new_transform_ptr);
+		Matrix4f& old_transform_value = it->second.value;
 
-			if (new_transform_ptr)
-				old_transform_value = *new_transform_ptr;
+		// Do a deep comparison as well to avoid submitting a new transform which is equal.
+		if (!old_transform || !new_transform || (old_transform_value != *new_transform))
+		{
+			render_interface->SetTransform(new_transform);
+
+			if (new_transform)
+				old_transform_value = *new_transform;
 		}
 
-		old_transform_ptr = new_transform_ptr;
+		old_transform = new_transform;
 	}
 
 	return true;
